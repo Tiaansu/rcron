@@ -252,27 +252,25 @@ impl<'a> JobScheduler<'a> {
     /// sched.get_job_remaining_time(job_id);
     /// ```
     pub fn get_job_remaining_time(&self, job_id: Uuid) -> i64 {
-        let mut found_index = None;
-        for (i, job) in self.jobs.iter().enumerate() {
-            if job.job_id == job_id {
-                found_index = Some(i);
-                break;
-            }
-        }
+        let job = self.jobs.iter().find(|&j| j.job_id == job_id);
 
-        if found_index.is_none() {
-            return -1;
+        match job {
+            Some(job) => job
+                .schedule
+                .upcoming(Utc)
+                .next()
+                .map(|next_run| {
+                    let duration = next_run - Utc::now();
+                    let secs = duration.num_seconds();
+                    if duration.num_milliseconds() % 1000 > 0 {
+                        secs + 1
+                    } else {
+                        secs
+                    }
+                })
+                .unwrap_or(-1),
+            None => -1,
         }
-
-        let index = found_index.unwrap();
-        let now = Utc::now();
-        let job = &self.jobs[index];
-        let mut duration = Duration::zero();
-        for event in job.schedule.upcoming(Utc).take(1) {
-            let d = event - now;
-            duration = d;
-        }
-        duration.num_seconds()
     }
 }
 
