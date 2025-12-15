@@ -261,12 +261,7 @@ impl<'a> JobScheduler<'a> {
                 .next()
                 .map(|next_run| {
                     let duration = next_run - Utc::now();
-                    let secs = duration.num_seconds();
-                    if duration.num_milliseconds() % 1000 > 0 {
-                        secs + 1
-                    } else {
-                        secs
-                    }
+                    duration.num_seconds() + 1
                 })
                 .unwrap_or(-1),
             None => -1,
