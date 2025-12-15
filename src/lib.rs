@@ -60,7 +60,7 @@
 //! }
 //! ```
 
-use chrono::{DateTime, Duration, Local};
+use chrono::{DateTime, Duration, Local, Utc};
 pub use cron::Schedule;
 pub use uuid::Uuid;
 
@@ -239,6 +239,40 @@ impl<'a> JobScheduler<'a> {
             }
         }
         duration.to_std().unwrap()
+    }
+
+    /// The `get_job_remaining_time` method returns the remaining time in seconds
+    /// till the next run of the job at the given index.
+    ///
+    /// ```rust,ignore
+    /// let mut sched = JobScheduler::new();
+    /// let job_id = sched.add(Job::new("1/10 * * * * *".parse().unwrap(), || {
+    ///     println!("I get executed every 10 seconds!");
+    /// }));
+    /// sched.get_job_remaining_time(job_id);
+    /// ```
+    pub fn get_job_remaining_time(&self, job_id: Uuid) -> i64 {
+        let mut found_index = None;
+        for (i, job) in self.jobs.iter().enumerate() {
+            if job.job_id == job_id {
+                found_index = Some(i);
+                break;
+            }
+        }
+
+        if found_index.is_none() {
+            return -1;
+        }
+
+        let index = found_index.unwrap();
+        let now = Utc::now();
+        let job = &self.jobs[index];
+        let mut duration = Duration::zero();
+        for event in job.schedule.upcoming(Utc).take(1) {
+            let d = event - now;
+            duration = d;
+        }
+        duration.num_seconds()
     }
 }
 
